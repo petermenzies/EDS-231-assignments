@@ -1,58 +1,74 @@
 ---
-title: "Week 2 Lab - NYT"
+title: "Week 2 Lab — Exploring New York Times articles related to nuclear fusion"
 author: "Peter Menzies"
 date: "4/6/2022"
-output: html_document
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    theme: cerulean
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-library(jsonlite) #convert results from API queries into R-friendly formats 
+library(jsonlite)  
 library(tidyverse) 
-library(tidytext) #text data management and analysis
+library(tidytext) 
+
+requery <- FALSE
 ```
 
-## Build 
+## Querying the NYT API
 
 ```{r}
-term <- "nuclear+fusion" # Need to use + to string together separate words
-begin_date <- "20160101"
-end_date <- "20220411"
-
-#construct the query url using API operators
-baseurl <- paste0("http://api.nytimes.com/svc/search/v2/articlesearch.json?q=",term,
-                  "&begin_date=",begin_date,"&end_date=",end_date,
-                  "&facet_filter=true&api-key=","cqRVqR7OxTbIN7WkN9GJ3DgGsEbMI2cR", sep="")
-```
-
-```{r}
-initialQuery <- fromJSON(baseurl)
-maxPages <- round((initialQuery$response$meta$hits[1] / 10) - 1) 
-
-pages <- list()
-for (i in 0:maxPages) 
+if (requery == TRUE) 
   {
-    nytSearch <- fromJSON(paste0(baseurl, "&page=", i), flatten = TRUE) %>% data.frame() 
-    message("Retrieving page ", i)
-    pages[[i+1]] <- nytSearch 
-    Sys.sleep(6) 
+    term <- "nuclear+fusion" # Need to use + to string together separate words
+    begin_date <- "20160101"
+    end_date <- "20220411"
+    
+    #construct the query url using API operators
+    baseurl <- paste0("http://api.nytimes.com/svc/search/v2/articlesearch.json?q=", term,
+                      "&begin_date=",begin_date, "&end_date=", end_date,
+                      "&facet_filter=true&api-key=", "cqRVqR7OxTbIN7WkN9GJ3DgGsEbMI2cR", sep = "") 
+    
+    
+    initialQuery <- fromJSON(baseurl)
+    maxPages <- round((initialQuery$response$meta$hits[1] / 10) - 1) 
+    
+    pages <- list()
+    for (i in 0:maxPages) 
+      {
+        nytSearch <- fromJSON(paste0(baseurl, "&page=", i), flatten = TRUE) %>% data.frame() 
+        message("Retrieving page ", i)
+        pages[[i+1]] <- nytSearch 
+        Sys.sleep(6) 
+    }
+    class(nytSearch)
+    
+    df <- rbind_pages(pages)
+  
+    saveRDS(df, file = "data/nyt_nuclear_fusion.rds")
 }
-class(nytSearch)
+
+df <- readRDS("data/nyt_nuclear_fusion.rds")
 ```
 
-```{r}
-df <- rbind_pages(pages)
+## Distribution of article types
 
+```{r}
 df %>% 
   group_by(response.docs.type_of_material) %>% 
   summarize(count = n()) %>% 
   mutate(percent = (count / sum(count)) * 100) %>% 
   rename(material_type = response.docs.type_of_material) %>% 
-  ggplot(aes(y = material_type, x = percent, fill = material_type)) + 
+  ggplot(aes(y = reorder(material_type, percent), x = percent, fill = material_type)) + 
   geom_col() +
   theme_minimal()
 ```
+
+## High frequency publication days
 
 ```{r}
 df %>%
@@ -65,6 +81,11 @@ df %>%
   theme_minimal()
 ```
 
+## Exploring high frequency words
+
+### First paragraph
+
+#### Tokenize and visualize words in first paragraph
 
 ```{r}
 paragraph <- names(df)[6]
@@ -82,6 +103,7 @@ tokenized %>%
   geom_col() +
   theme_minimal()
 ```
+#### Create and call function to clean up noise and stem potentially important words
 
 ```{r}
 clean_tokens <- function(df) 
@@ -104,17 +126,19 @@ tokenized <- tokenized %>%
   select(clean)
 ```
 
+#### Visualize cleaned up words
+
 ```{r}
 tokenized %>% 
   count(clean, sort = TRUE) %>% 
-  filter(n > 3) %>% 
+  filter(n > 5) %>% 
   mutate(clean = reorder(clean, n)) %>% 
   ggplot(aes(x = n, y = clean)) +
   geom_col() +
   theme_minimal()
 ```
 
-## Headline word frequencies
+### Headlines
 
 ```{r}
 headlines <- names(df)[21]
@@ -140,7 +164,7 @@ tokenized %>%
   theme_minimal()
 ```
 
-## Comparing frequencies between first paragraph and headlines
+## Comparing word frequencies
 
 Generally, high frequency words seem to align between first paragraphs and headlines. Both distributions illustrate a shortcoming of my search criteria in that many of the articles (unsurprisingly) seem to be related to nuclear weapons and the politics associated with that topic. This is evident from words like "bomb", "[north] korea", "trump"---although, "climate" and "energy" show up in both plots, so we're hitting the mark to some extent. An interesting word that appeared in the paragraph plot and not the headlines plot is "love"---it would be interested to dig in a little further and investigate why the word "love" is only a bit less frequent than "fusion" which was one of the search terms.
 
