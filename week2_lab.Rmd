@@ -1,12 +1,10 @@
 ---
-title: "Week 2 Lab — Exploring New York Times articles related to nuclear fusion"
+title: "Week 2 Lab — Exploring word frequencies in New York Times articles related to nuclear fusion"
 author: "Peter Menzies"
 date: "4/6/2022"
 output: 
-  html_document:
+  pdf_document:
     toc: true
-    toc_float: true
-    theme: cerulean
 ---
 
 ```{r setup, include=FALSE}
@@ -19,7 +17,7 @@ library(tidytext)
 requery <- FALSE
 ```
 
-## Querying the NYT API
+# Querying the NYT API
 
 ```{r}
 if (requery == TRUE) 
@@ -31,7 +29,8 @@ if (requery == TRUE)
     #construct the query url using API operators
     baseurl <- paste0("http://api.nytimes.com/svc/search/v2/articlesearch.json?q=", term,
                       "&begin_date=",begin_date, "&end_date=", end_date,
-                      "&facet_filter=true&api-key=", "cqRVqR7OxTbIN7WkN9GJ3DgGsEbMI2cR", sep = "") 
+                      "&facet_filter=true&api-key=", "cqRVqR7OxTbIN7WkN9GJ3DgGsEbMI2cR", 
+                      sep = "") 
     
     
     initialQuery <- fromJSON(baseurl)
@@ -40,7 +39,8 @@ if (requery == TRUE)
     pages <- list()
     for (i in 0:maxPages) 
       {
-        nytSearch <- fromJSON(paste0(baseurl, "&page=", i), flatten = TRUE) %>% data.frame() 
+        nytSearch <- fromJSON(paste0(baseurl, "&page=", i), flatten = TRUE) %>%
+          data.frame() 
         message("Retrieving page ", i)
         pages[[i+1]] <- nytSearch 
         Sys.sleep(6) 
@@ -55,7 +55,7 @@ if (requery == TRUE)
 df <- readRDS("data/nyt_nuclear_fusion.rds")
 ```
 
-## Distribution of article types
+# Distribution of article types
 
 ```{r}
 df %>% 
@@ -68,7 +68,7 @@ df %>%
   theme_minimal()
 ```
 
-## High frequency publication days
+# High frequency publication days
 
 ```{r}
 df %>%
@@ -81,13 +81,13 @@ df %>%
   theme_minimal()
 ```
 
-## Exploring high frequency words
+# Exploring high frequency words
 
-### First paragraph
+## First paragraph
 
-#### Tokenize and visualize words in first paragraph
+### Tokenize and visualize words in first paragraph
 
-```{r}
+```{r, warning=FALSE}
 paragraph <- names(df)[6]
 tokenized <- df %>% 
   unnest_tokens(word, paragraph)
@@ -103,7 +103,8 @@ tokenized %>%
   geom_col() +
   theme_minimal()
 ```
-#### Create and call function to clean up noise and stem potentially important words
+
+### Create and call function to clean up noise and stem potentially important words
 
 ```{r}
 clean_tokens <- function(df) 
@@ -126,7 +127,8 @@ tokenized <- tokenized %>%
   select(clean)
 ```
 
-#### Visualize cleaned up words
+  
+### Visualize cleaned up words
 
 ```{r}
 tokenized %>% 
@@ -138,7 +140,7 @@ tokenized %>%
   theme_minimal()
 ```
 
-### Headlines
+## Headlines
 
 ```{r}
 headlines <- names(df)[21]
@@ -164,9 +166,9 @@ tokenized %>%
   theme_minimal()
 ```
 
-## Comparing word frequencies
+# Comparing word frequencies
 
-Generally, high frequency words seem to align between first paragraphs and headlines. Both distributions illustrate a shortcoming of my search criteria in that many of the articles (unsurprisingly) seem to be related to nuclear weapons and the politics associated with that topic. This is evident from words like "bomb", "[north] korea", "trump"---although, "climate" and "energy" show up in both plots, so we're hitting the mark to some extent. An interesting word that appeared in the paragraph plot and not the headlines plot is "love"---it would be interested to dig in a little further and investigate why the word "love" is only a bit less frequent than "fusion" which was one of the search terms.
+Generally, high frequency words seem to align for the most part between first paragraphs and headlines. Both distributions illustrate a shortcoming of my search criteria in that many of the articles (unsurprisingly) seem to be related to nuclear weapons and the politics associated with that topic. This is evident from words like "bomb", "[north] korea", "trump"---although, "climate" and "energy" show up in both plots, so we're hitting the mark to some extent. An interesting word that appeared in the paragraph plot and not the headlines plot is "love"---it would be interesting to dig in a little further and investigate why the word "love" is only a bit less frequent than "fusion" which was one of the search terms.
 
 
 
