@@ -1,0 +1,38 @@
+---
+title: 'Sentiment Analysis: "Pollinators"'
+author: "Peter Menzies"
+date: '2022-04-19'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(lubridate)
+library(tidytext)
+library(here)
+library(LexisNexisTools)
+library(sentimentr)
+library(readr)
+library(textreadr)
+library(janitor)
+```
+
+```{r}
+text_lnt <- lnt_read(c("data/pollinators_nexis_1-100.docx", "data/pollinators_nexis_101-200.docx"))
+
+text_df <- lnt_convert(text) %>% 
+  clean_names() %>% 
+  select(!c(section, edition, graphic)) %>% 
+  mutate(article = tolower(article))
+
+text_df$article <- gsub("[[:digit:][:punct:]]", "", text_df$article)
+
+words <- text_df %>% 
+  select(date, headline, article) %>% 
+  unnest_tokens(output = word, input = article, token = 'words')
+```
+
+
+
