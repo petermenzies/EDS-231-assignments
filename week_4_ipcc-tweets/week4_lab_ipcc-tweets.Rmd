@@ -1,0 +1,42 @@
+---
+title: "IPCC Tweets April 2022"
+author: "Peter Menzies"
+date: '2022-04-20'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(janitor)
+library(here)
+library(quanteda)
+library(quanteda.sentiment)
+library(quanteda.textstats)
+library(tidyverse)
+library(tidytext)
+library(lubridate)
+library(wordcloud) 
+library(reshape2)
+```
+
+```{r}
+data <- readRDS(here("data", "ipcc_tweets.RDS"))
+
+tweets <- data %>% 
+  clean_names() %>% 
+  select(title, date) %>% 
+  rename(text = title) %>%
+  mutate(date = as.Date(date,'%m/%d/%y'),
+         id = seq_along(title),
+         text = tolower(text))
+
+# URLs
+tweets$text <- gsub("(http\\S+\\s*)|(www\\S+\\s*)", "", tweets$text)
+# Twitter accounts
+tweets$text <- gsub("@\\S+\\s*", "", tweets$text)
+# Numbers and punctuation
+tweets$text <- gsub("[[:digit:][:punct:]]", "", tweets$text)
+
+```
+
